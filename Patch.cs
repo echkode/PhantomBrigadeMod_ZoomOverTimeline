@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using System.Text;
 
 using HarmonyLib;
 
@@ -42,13 +43,34 @@ namespace EchKode.PBMods.ZoomOverTimeline
 				collider.center = new Vector3(w / 2f, -h / 2f, 0f);
 				collider.size = new Vector2(w, h);
 				backgroundColliderAttached = true;
+				if (log)
+				{
+					var (colliderLowerLeft, colliderUpperRight, colliderCenter) = GetColliderUIPos(backgroundSprite);
+					var (lowerLeft, upperRight, center) = GetUIPos(backgroundSprite);
+					Debug.LogFormat(
+						"Mod {0} ({1}) attached collider | name: {2} | pivot: {3}\n  collider | size: {4} | uipos: {5}x{6}+{7}\n  widget | size: {8} | uipos: {9}x{10}+{11}",
+						ModLink.modIndex,
+						ModLink.modID,
+						backgroundSprite.name,
+						backgroundSprite.pivot,
+						collider.size,
+						colliderLowerLeft,
+						colliderUpperRight,
+						colliderCenter,
+						new Vector2Int(w, h),
+						lowerLeft,
+						upperRight,
+						center);
+				}
 			}
 			zoomBlockers.Add(backgroundSprite.gameObject);
 
 			zoomBlockers.Add(__instance.scrollBarWidgetRoot.gameObject);
 			var found = false;
-			foreach (var child in __instance.scrollPanel.widgets)
+			var scrollPanelWidgets = __instance.scrollPanel.widgets;
+			for (var i = 0; i < scrollPanelWidgets.Count; i += 1)
 			{
+				var child = scrollPanelWidgets[i];
 				if (child is UISprite sprite && sprite.gameObject.name == "Sprite_Draggable")
 				{
 					zoomBlockers.Add(sprite.gameObject);
@@ -59,10 +81,24 @@ namespace EchKode.PBMods.ZoomOverTimeline
 
 			if (!found)
 			{
-				if (log)
+				if (scrollPanelWidgets.Count != 0)
+				{
+					sb.Clear();
+					for (var i = 0; i < scrollPanelWidgets.Count; i += 1)
+					{
+						sb.AppendFormat("\n  {0}", scrollPanelWidgets[i].name);
+					}
+					Debug.LogWarningFormat(
+						"Mod {0} ({1}) unable to find expected widget in scroll panel | widget count: {2}{3}",
+						ModLink.modIndex,
+						ModLink.modID,
+						scrollPanelWidgets.Count,
+						sb);
+				}
+				else
 				{
 					Debug.LogWarningFormat(
-						"Mod {0} ({1}) unable to find expected widget in scroll panel",
+						"Mod {0} ({1}) unable to find expected widget in scroll panel -- no widgets in panel",
 						ModLink.modIndex,
 						ModLink.modID);
 				}
@@ -77,6 +113,20 @@ namespace EchKode.PBMods.ZoomOverTimeline
 			zoomBlockers.Add(__instance.buttonFilterEventsFriendly.gameObject);
 			zoomBlockers.Add(__instance.buttonFilterEventsEnemy.gameObject);
 			zoomBlockers.Add(__instance.buttonFilterOther.gameObject);
+
+			if (log)
+			{
+				sb.Clear();
+				foreach (var blocker in zoomBlockers)
+				{
+					sb.AppendFormat("\n  {0}", blocker.name);
+				}
+				Debug.LogFormat(
+					"Mod {0} ({1}) zoom blockers{2}",
+					ModLink.modIndex,
+					ModLink.modID,
+					sb);
+			}
 		}
 
 		[HarmonyPatch(typeof(CIViewCombatEventLog), nameof(CIViewCombatEventLog.TryExit))]
@@ -160,6 +210,14 @@ namespace EchKode.PBMods.ZoomOverTimeline
 			{
 				if (hovered == blocker)
 				{
+					if (log)
+					{
+						Debug.LogFormat(
+							"Mod {0} ({1}) zoom blocked | name: {2}",
+							ModLink.modIndex,
+							ModLink.modID,
+							blocker.name);
+					}
 					return;
 				}
 			}
@@ -200,6 +258,53 @@ namespace EchKode.PBMods.ZoomOverTimeline
 			var h = sprite.height;
 			collider.center = new Vector3(w / 2f, -h / 2f, 0f);
 			collider.size = new Vector2(w, h);
+
+			if (log)
+			{
+				var (lowerLeft, upperRight, center) = GetColliderUIPos(sprite);
+				Debug.LogFormat(
+					"Mod {0} ({1}) resized collider | name: {2} | size: {3} | uipos: {4}x{5}+{6}",
+					ModLink.modIndex,
+					ModLink.modID,
+					sprite.name,
+					collider.size,
+					lowerLeft,
+					upperRight,
+					center);
+			}
+		}
+
+
+		static (Vector2Int, Vector2Int, Vector2Int) GetUIPos(UIWidget widget)
+		{
+			var root = widget.root;
+			var corners = widget.worldCorners;
+			var lowerLeft = root.transform.InverseTransformPoint(corners[0]);
+			var upperRight = root.transform.InverseTransformPoint(corners[2]);
+			var center = root.transform.InverseTransformPoint(widget.transform.position);
+			return (
+				Vector2Int.RoundToInt(lowerLeft),
+				Vector2Int.RoundToInt(upperRight),
+				Vector2Int.RoundToInt(center));
+		}
+
+		static (Vector2Int, Vector2Int, Vector2Int) GetColliderUIPos(UIWidget widget)
+		{
+			var collider = widget.gameObject.GetComponent<BoxCollider>();
+			var halfExtents = new Vector3(collider.size.x / 2, collider.size.y / 2, 0f);
+			var lowerLeftLocal = collider.center - halfExtents;
+			var upperRightLocal = collider.center + halfExtents;
+			var root = widget.root;
+			var lowerLeft = collider.transform.TransformPoint(lowerLeftLocal);
+			var upperRight = collider.transform.TransformPoint(upperRightLocal);
+			lowerLeft = root.transform.InverseTransformPoint(lowerLeft);
+			upperRight = root.transform.InverseTransformPoint(upperRight);
+			var center = collider.transform.TransformPoint(collider.center);
+			center = root.transform.InverseTransformPoint(center);
+			return (
+				Vector2Int.RoundToInt(lowerLeft),
+				Vector2Int.RoundToInt(upperRight),
+				Vector2Int.RoundToInt(center));
 		}
 
 		public static bool ReadZoomInput = false;
@@ -209,6 +314,7 @@ namespace EchKode.PBMods.ZoomOverTimeline
 		static bool checkHover = false;
 		static readonly List<GameObject> zoomBlockers = new List<GameObject>();
 
-		static bool log = false;
+		static bool log = true;
+		static readonly StringBuilder sb = new StringBuilder();
 	}
 }
