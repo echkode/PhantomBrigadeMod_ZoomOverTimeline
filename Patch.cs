@@ -14,13 +14,12 @@ namespace EchKode.PBMods.ZoomOverTimeline
 	[HarmonyPatch]
 	public static class Patch
 	{
-		[HarmonyPatch(typeof(CIViewCombatEventLog), nameof(CIViewCombatEventLog.TryEntry))]
+		[HarmonyPatch(typeof(CIViewCombatEventLog), "UpdateActive")]
 		[HarmonyPostfix]
-		static void Civcel_TryEntryPostfix(CIViewCombatEventLog __instance)
+		static void Civcel_UpdateActivePostfix(CIViewCombatEventLog __instance)
 		{
 			readOverride = !CIViewCombatEventLog.logDisplayAllowed;
 			checkHover = CIViewCombatEventLog.logDisplayAllowed;
-			zoomBlockers.Clear();
 
 			if (!checkHover)
 			{
@@ -31,6 +30,12 @@ namespace EchKode.PBMods.ZoomOverTimeline
 						ModLink.modIndex,
 						ModLink.modID);
 				}
+				zoomBlockers.Clear();
+				return;
+			}
+
+			if (zoomBlockers.Count == expectedZoomBlockerCount)
+			{
 				return;
 			}
 
@@ -38,10 +43,9 @@ namespace EchKode.PBMods.ZoomOverTimeline
 			if (!backgroundColliderAttached)
 			{
 				var collider = backgroundSprite.gameObject.AddComponent<BoxCollider>();
-				var w = backgroundSprite.width;
-				var h = backgroundSprite.height;
-				collider.center = new Vector3(w / 2f, -h / 2f, 0f);
-				collider.size = new Vector2(w, h);
+				NGUITools.UpdateWidgetCollider(backgroundSprite);
+				var t = new Traverse(__instance);
+				t.Field<List<Collider>>("colliders").Value.Add(collider);
 				backgroundColliderAttached = true;
 				if (log)
 				{
@@ -57,15 +61,16 @@ namespace EchKode.PBMods.ZoomOverTimeline
 						colliderLowerLeft,
 						colliderUpperRight,
 						colliderCenter,
-						new Vector2Int(w, h),
+						new Vector2Int(backgroundSprite.width, backgroundSprite.height),
 						lowerLeft,
 						upperRight,
 						center);
 				}
 			}
+
+			zoomBlockers.Clear();
 			zoomBlockers.Add(backgroundSprite.gameObject);
 
-			zoomBlockers.Add(__instance.scrollBarWidgetRoot.gameObject);
 			var found = false;
 			var scrollPanelWidgets = __instance.scrollPanel.widgets;
 			for (var i = 0; i < scrollPanelWidgets.Count; i += 1)
@@ -81,29 +86,45 @@ namespace EchKode.PBMods.ZoomOverTimeline
 
 			if (!found)
 			{
-				if (scrollPanelWidgets.Count != 0)
+				if (log)
 				{
-					sb.Clear();
-					for (var i = 0; i < scrollPanelWidgets.Count; i += 1)
+					if (scrollPanelWidgets.Count != 0)
 					{
-						sb.AppendFormat("\n  {0}", scrollPanelWidgets[i].name);
+						sb.Clear();
+						for (var i = 0; i < scrollPanelWidgets.Count; i += 1)
+						{
+							sb.AppendFormat("\n  {0}", scrollPanelWidgets[i].name);
+						}
+						Debug.LogWarningFormat(
+							"Mod {0} ({1}) unable to find expected widget in scroll panel | widget count: {2}{3}",
+							ModLink.modIndex,
+							ModLink.modID,
+							scrollPanelWidgets.Count,
+							sb);
 					}
-					Debug.LogWarningFormat(
-						"Mod {0} ({1}) unable to find expected widget in scroll panel | widget count: {2}{3}",
-						ModLink.modIndex,
-						ModLink.modID,
-						scrollPanelWidgets.Count,
-						sb);
-				}
-				else
-				{
-					Debug.LogWarningFormat(
-						"Mod {0} ({1}) unable to find expected widget in scroll panel -- no widgets in panel",
-						ModLink.modIndex,
-						ModLink.modID);
+					else
+					{
+						sb.Clear();
+						var st = new System.Diagnostics.StackTrace();
+						for (var i = 2; i < st.FrameCount; i += 1)
+						{
+							var frame = st.GetFrame(i);
+							var m = frame.GetMethod();
+							sb.Append("\n")
+								.Append(' ', (i - 1) * 2)
+								.AppendFormat("{0}::{1}", m.DeclaringType.FullName, m.Name);
+						}
+						Debug.LogWarningFormat(
+							"Mod {0} ({1}) unable to find expected widget in scroll panel -- no widgets in panel{2}",
+							ModLink.modIndex,
+							ModLink.modID,
+							sb);
+					}
 				}
 
-				Civcel_TryExitPostfix();
+				readOverride = false;
+				checkHover = false;
+				zoomBlockers.Clear();
 				return;
 			}
 
@@ -313,8 +334,9 @@ namespace EchKode.PBMods.ZoomOverTimeline
 		static bool readOverride = false;
 		static bool checkHover = false;
 		static readonly List<GameObject> zoomBlockers = new List<GameObject>();
+		const int expectedZoomBlockerCount = 8;
 
-		static bool log = true;
+		static bool log = false;
 		static readonly StringBuilder sb = new StringBuilder();
 	}
 }
