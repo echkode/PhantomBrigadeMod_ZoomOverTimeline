@@ -207,12 +207,7 @@ namespace EchKode.PBMods.ZoomOverTimeline
 				return;
 			}
 
-			if (!checkHover)
-			{
-				return;
-			}
-
-			if (readOverride)
+			if (!checkHover || readOverride)
 			{
 				ReadZoomInput = true;
 				return;
