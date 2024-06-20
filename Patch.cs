@@ -27,8 +27,8 @@ namespace EchKode.PBMods.ZoomOverTimeline
 				{
 					Debug.LogFormat(
 						"Mod {0} ({1}) combat event log turned off",
-						ModLink.modIndex,
-						ModLink.modID);
+						ModLink.ModIndex,
+						ModLink.ModID);
 				}
 				zoomBlockers.Clear();
 				return;
@@ -53,8 +53,8 @@ namespace EchKode.PBMods.ZoomOverTimeline
 					var (lowerLeft, upperRight, center) = GetUIPos(backgroundSprite);
 					Debug.LogFormat(
 						"Mod {0} ({1}) attached collider | name: {2} | pivot: {3}\n  collider | size: {4} | uipos: {5}x{6}+{7}\n  widget | size: {8} | uipos: {9}x{10}+{11}",
-						ModLink.modIndex,
-						ModLink.modID,
+						ModLink.ModIndex,
+						ModLink.ModID,
 						backgroundSprite.name,
 						backgroundSprite.pivot,
 						collider.size,
@@ -97,8 +97,8 @@ namespace EchKode.PBMods.ZoomOverTimeline
 						}
 						Debug.LogWarningFormat(
 							"Mod {0} ({1}) unable to find expected widget in scroll panel | widget count: {2}{3}",
-							ModLink.modIndex,
-							ModLink.modID,
+							ModLink.ModIndex,
+							ModLink.ModID,
 							scrollPanelWidgets.Count,
 							sb);
 					}
@@ -116,8 +116,8 @@ namespace EchKode.PBMods.ZoomOverTimeline
 						}
 						Debug.LogWarningFormat(
 							"Mod {0} ({1}) unable to find expected widget in scroll panel -- no widgets in panel{2}",
-							ModLink.modIndex,
-							ModLink.modID,
+							ModLink.ModIndex,
+							ModLink.ModID,
 							sb);
 					}
 				}
@@ -144,8 +144,8 @@ namespace EchKode.PBMods.ZoomOverTimeline
 				}
 				Debug.LogFormat(
 					"Mod {0} ({1}) zoom blockers{2}",
-					ModLink.modIndex,
-					ModLink.modID,
+					ModLink.ModIndex,
+					ModLink.ModID,
 					sb);
 			}
 		}
@@ -230,8 +230,8 @@ namespace EchKode.PBMods.ZoomOverTimeline
 					{
 						Debug.LogFormat(
 							"Mod {0} ({1}) zoom blocked | name: {2}",
-							ModLink.modIndex,
-							ModLink.modID,
+							ModLink.ModIndex,
+							ModLink.ModID,
 							blocker.name);
 					}
 					return;
@@ -280,8 +280,8 @@ namespace EchKode.PBMods.ZoomOverTimeline
 				var (lowerLeft, upperRight, center) = GetColliderUIPos(sprite);
 				Debug.LogFormat(
 					"Mod {0} ({1}) resized collider | name: {2} | size: {3} | uipos: {4}x{5}+{6}",
-					ModLink.modIndex,
-					ModLink.modID,
+					ModLink.ModIndex,
+					ModLink.ModID,
 					sprite.name,
 					collider.size,
 					lowerLeft,
